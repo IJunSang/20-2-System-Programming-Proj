@@ -3,7 +3,7 @@ sudo chmod -R 755 ./
 
 sudo apt update -y
 
-ECHO "update complete"
+echo "update complete"
 sudo apt install build-essential -y
 sudo apt install autoconf -y
 sudo apt install libtool -y
