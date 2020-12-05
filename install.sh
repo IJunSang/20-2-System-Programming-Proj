@@ -7,7 +7,7 @@ cd protobuf-3.11.4
 
 ./autogen.sh
 ./configure
-make -j
+make
 make install
 
 ldconfig
