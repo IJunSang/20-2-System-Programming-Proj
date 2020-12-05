@@ -3,7 +3,12 @@ sudo chmod -R 755 ./
 
 sudo apt update
 
-sudo apt install -y build-essential autoconf libtool python3-dev python3-sip-dev cmake
+sudo apt install build-essential -y
+sudo apt install autoconf -y
+sudo apt install libtool -y
+sudo apt install python3-dev -y
+sudo apt install python3-sip-dev -y
+sudo apt install cmake -y
 
 cd protobuf-3.11.4
 
