@@ -92,8 +92,6 @@ void slice_stl(char *req_uri, int client_fd)
 
                 fread(file_buf, statbuf.st_size, 1, fp);
 
-                printf("content-length: %d\n", (int)strlen(file_buf));
-
                 sprintf(temp, "HTTP/1.0 200 OK\r\n"
                     "Content-type: text/plain\r\n"
                     "Server: web server\r\n"
