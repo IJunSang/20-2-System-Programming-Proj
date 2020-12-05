@@ -1,7 +1,7 @@
 #! /bin/bash
 sudo chmod -R 755 ./
 
-sudo apt update
+sudo apt update -y
 
 sudo apt install build-essential -y
 sudo apt install autoconf -y
