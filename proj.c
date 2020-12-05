@@ -25,17 +25,15 @@ void slice_cura(char *file_name)
     char result[500] = "./output/";
     char file_temp[500] = { '\0', };
     char *result_temp;
+
     strcpy(file_temp, file_name);
     result_temp = strtok(file_temp, "/");
     result_temp = strtok(NULL, "/");
     result_temp = strtok(NULL, "/");
-    printf("%s\n", result_temp);
     strcat(route, file_name);
     strcat(result, result_temp);
-    printf("%s\n", result);
     strcat(result, ".gcode");
-    printf("%s\n", file_name);
-    execl("../CuraEngine/build/CuraEngine", " ", "slice", "-v", "-j", "./fdmprinter.def.json", "-o", result, "-l", file_name, (char *)0);
+    execl("../CuraEngine/build/CuraEngine", " ", "slice", "-j", "./fdmprinter.def.json", "-o", result, "-l", file_name, (char *)0);
 }
 
 
@@ -48,12 +46,11 @@ void slice_stl(char *req_uri, int client_fd)
     int size_count = 0;
     FILE *fp;
     struct stat statbuf;
-    pid_t pid;
+    pid_t pid = 1;
     
 
     strcat(file_name, req_uri);
     strcat(result_name, req_uri);
-    printf("file_name: %s\n", result_name);
     strcat(result_name, ".gcode");
     if(access(file_name, F_OK | R_OK) == 0)
     {
@@ -63,6 +60,7 @@ void slice_stl(char *req_uri, int client_fd)
 
         if(pid == 0)
         {
+            close(client_fd);
             slice_cura(file_name);
         }
         else if(pid < 0)
@@ -77,36 +75,40 @@ void slice_stl(char *req_uri, int client_fd)
             if(access(result_name, F_OK | R_OK) == -1)
             {
                 perror("can't access to file");
+                close(client_fd);
             }
             else
             {
                 fp = fopen(result_name, "r");
                 stat(result_name, &statbuf);
-                
-                temp = malloc(sizeof(char) * (131 + statbuf.st_size));
+                // fp = fopen("./output/test.txt", "r");
+                // stat("./output/test.txt", &statbuf);
+
+                temp = malloc(sizeof(char) * (500 + statbuf.st_size));
+
+                file_buf = malloc(sizeof(char) * (statbuf.st_size + 1));
+
+                memset(file_buf, '\0', statbuf.st_size);
+
+                fread(file_buf, statbuf.st_size, 1, fp);
+
+                printf("content-length: %d\n", (int)strlen(file_buf));
 
                 sprintf(temp, "HTTP/1.0 200 OK\r\n"
+                    "Content-type: text/plain\r\n"
                     "Server: web server\r\n"
                     "Content-length:%d\r\n"
-                    "Content-Disposition: attachment; filename=\"%s\"\r\n"
-                    "Content-type: text/plain\r\n\r\n", (int)statbuf.st_size + 1, result_name);
+                    "Content-Disposition: attachment; filename=\"%s\"\r\n\r\n", (int)strlen(file_buf), result_name);
 
-                printf("file_size: %d\n", (int)statbuf.st_size);
+                sleep(1);
 
-                fseek(fp, 0, SEEK_END);
-                size_count = ftell(fp);
-                fseek(fp, 0, SEEK_SET);
+                // strcat(temp, file_buf);
 
-                file_buf = malloc(sizeof(char) * size_count);
-
-                memset(file_buf, '\0', size_count);
-
-                fgets(file_buf, size_count + 1, fp);
-
-                strcat(temp, file_buf);
                 // send header + text messages
-                write(client_fd, temp, size_count + 82);
+                write(client_fd, temp, strlen(temp));
+                write(client_fd, file_buf, strlen(file_buf));
 
+                unlink(result_name);
                 close(client_fd);
                 free(file_buf);
                 free(temp);   
@@ -115,15 +117,20 @@ void slice_stl(char *req_uri, int client_fd)
     }
     else
     {
+        printf("404 ERROR\n");
+        temp = malloc(92 + strlen(req_uri));
+
+        sprintf(temp, "<html><head>404 Error</head><body><h1>404 ERROR!!</h1><h2>Can't find \"%s\"</h2></body></html>", req_uri);
+
         sprintf(response_header, "HTTP/1.0 200 OK\r\n"
             "Server: web server\r\n"
             "Content-length:%d\r\n"
-            "Content-type:text/html\r\n\r\n", (int)strlen(response_header));
+            "Content-type:text/html\r\n\r\n", (int)strlen(temp));
+        
+        write(client_fd, response_header, strlen(response_header));
+        write(client_fd, temp, strlen(temp));
 
-        sprintf(file_buf, "<html><head>404 Error</head><body><h1>404 ERROR!!</h1><h2>Can't find %s</h2></body></html>", file_name);
-        write(client_fd, response_header, 1024);
-        write(client_fd, file_buf, 1024);
-        printf("error!\n");
+        free(temp);
         close(client_fd);
     }
 }
@@ -247,7 +254,24 @@ void inet_main(int socket_fd)
         else if(strcmp(req_uri, "/favicon.ico") == 0)
         {
             printf("continue.....\n");
+            close(client_fd);
             continue;
+        }
+        else if(strcmp(req_uri, "/v1/version") == 0)
+        {
+            response_message = malloc(30);
+            
+            sprintf(response_message, "{message: \"Version 1.0.0\"}");
+            sprintf(response_header, "HTTP/1.0 200 OK\r\n"
+            "Server: web server\r\n"
+            "Content-length: %d\r\n"
+            "Content-type: text/html\r\n\r\n", (int)strlen(response_message));
+
+            write(client_fd, response_header, strlen(response_header));
+            write(client_fd, response_message, strlen(response_message));
+
+            close(client_fd);
+            free(response_message);
         }
         else
         {
