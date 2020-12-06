@@ -1,5 +1,8 @@
 // File name: proj.c
 // System Programming Project
+// OS: Ubuntu 20.04
+// Docker iamge: mjnhb2001/cura_engine
+// Author: JunSang Lee
 
 #include <stdio.h>
 #include <string.h>
@@ -14,10 +17,45 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include <pthread.h>
+#include <sys/shm.h>
 
 #define PORTNUM 9000
 #define HTML_FILE_NAME "proj.html"
+
+int make_octo_socket(char *address)
+{
+    int octo_socket = 0;
+    struct sockaddr_in octo_addr;
+    if((octo_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        printf("Socket opening failed\n");
+        exit(1);
+    }
+
+    memset((char *)&octo_addr, '\0', sizeof(octo_addr));
+    octo_addr.sin_family = AF_INET;
+    octo_addr.sin_port = htons(80);
+    inet_aton(address, &octo_addr.sin_addr);
+
+    if(connect(octo_socket, (struct sockaddr *) &octo_addr, sizeof(octo_addr)) == -1)
+    {
+        printf("connect failed\n");
+        exit(1);
+    }
+
+    return octo_socket;
+}
+void *write_log(void *message)
+{
+    FILE *fp = fopen("proj_server_log.txt", "a");
+    fprintf(fp, (char *)message);
+    fclose(fp);
+}
+void *print_log(void *message)
+{
+    printf("%s", (char *)message);
+}
 
 void slice_cura(char *file_name)
 {
@@ -41,9 +79,11 @@ void slice_stl(char *req_uri, int client_fd)
 {
     char file_name[300] = "./stl";
     char result_name[300] = "./output";
+    char res_recv[1024] = { '\0', };
     char *file_buf, *temp;
     char response_header[1024] = { '\0', };
     int size_count = 0;
+    int octo_socket = 0;
     FILE *fp;
     struct stat statbuf;
     pid_t pid = 1;
@@ -106,8 +146,35 @@ void slice_stl(char *req_uri, int client_fd)
                 write(client_fd, temp, strlen(temp));
                 write(client_fd, file_buf, strlen(file_buf));
 
+                temp = realloc(temp, strlen(file_buf) + strlen(file_name) + 400);
+                memset(temp, '\0', sizeof(temp));
+
+                octo_socket = make_octo_socket("////////////");
+                // send file to octoprint server 192.168.0.46
+                sprintf(temp, "POST /api/files/local HTTP/1.1\r\n"
+                "Host: test.com\r\n"
+                "X-Api-Key: C629594E7B0B41D9BF20006886C95E91\r\n"
+                "Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                "Content-Length: %d\r\n\r\n"
+                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
+                "Content-Type: application/octet-stream\r\n\r\n"
+                "%s"
+                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                "Content-Disposition: form-data; name=\"select\"\r\n\r\n"
+                "true\r\n"
+                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                "Content-Disposition: form-data; name=\"print\"\r\n\r\n"
+                "true\r\n"
+                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC--\r\n\r\n", (int)strlen(file_buf) + 377 + (int)strlen(result_name), result_name, file_buf);
+                write(octo_socket, temp, strlen(temp));
+
+                read(octo_socket, res_recv, sizeof(res_recv));
+                printf("response: %s\n", res_recv);
+
                 unlink(result_name);
                 close(client_fd);
+                close(octo_socket);
                 free(file_buf);
                 free(temp);   
             }
@@ -115,7 +182,6 @@ void slice_stl(char *req_uri, int client_fd)
     }
     else
     {
-        printf("404 ERROR\n");
         temp = malloc(92 + strlen(req_uri));
 
         sprintf(temp, "<html><head>404 Error</head><body><h1>404 ERROR!!</h1><h2>Can't find \"%s\"</h2></body></html>", req_uri);
@@ -187,13 +253,15 @@ void inet_main(int socket_fd)
     char req[1024];
     char req_method[5];
     char req_address[20];
-    char req_uri[50];
+    char req_uri[100];
     char *req_temp;
+    char log[200];
     struct sockaddr_in server_addr, client_addr;
     int cli_size = sizeof(client_addr);
     int client_fd;
     int response_fd;
     int response_size;
+    pthread_t tid[2] = { 0, };
 
     while(1)
     {
@@ -213,22 +281,26 @@ void inet_main(int socket_fd)
         req_temp = strtok(NULL, "\n");
         strcpy(req_address, req_temp);
         req_temp = strtok(NULL, "\n");
-        // printf("request header: %s\n", req_method);
-        // printf("request address: %s\n", req_address);
-        // printf("request uri: %s\n", req_uri);
 
         time(&rawtime);
         timeinfo = localtime(&rawtime);
         time_char = asctime(timeinfo);
         time_char[strlen(time_char) - 1] = 0;
 
-        printf("New client accessed\n");
-        printf("Time: [%s]\n", time_char);
-        printf("Client IP: %s, Port: %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        sprintf(log, "=====New client accessed=====\n"
+            "Time: [%s]\n"
+            "Client IP: %s, Port: %d\n"
+            "request method: %s\n"
+            "request uri: %s\n", time_char, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port), req_method, req_uri);
+        
+        pthread_create(&tid[0], NULL, write_log, (void *)log);
+        pthread_create(&tid[1], NULL, print_log, (void *)log);
 
         if(strcmp(req_uri, "/") == 0)
         {
-            printf("Client IP %s accessed to ls_file\n", inet_ntoa(client_addr.sin_addr));
+            sprintf(log, "Client IP %s accessed to ls_file\n", inet_ntoa(client_addr.sin_addr));
+            pthread_create(&tid[0], NULL, write_log, (void *)log);
+            pthread_create(&tid[1], NULL, print_log, (void *)log);
             ls_file(client_fd, client_addr.sin_port, req_address, req_method);
 
             sprintf(response_header, "HTTP/1.0 200 OK\r\n"
@@ -257,6 +329,9 @@ void inet_main(int socket_fd)
         }
         else if(strcmp(req_uri, "/v1/version") == 0)
         {
+            sprintf(log, "Client IP %s accessed to v1/version\n", inet_ntoa(client_addr.sin_addr));
+            pthread_create(&tid[0], NULL, write_log, (void *)log);
+            pthread_create(&tid[1], NULL, print_log, (void *)log);
             response_message = malloc(30);
             
             sprintf(response_message, "{message: \"Version 1.0.0\"}");
@@ -273,15 +348,12 @@ void inet_main(int socket_fd)
         }
         else
         {
+            sprintf(log, "Client IP %s accessed to slice_stl\n", inet_ntoa(client_addr.sin_addr));
+            pthread_create(&tid[0], NULL, write_log, (void *)log);
+            pthread_create(&tid[1], NULL, print_log, (void *)log);
             slice_stl(req_uri, client_fd);
         }
-        
-
-        
-        time(&rawtime);
-        timeinfo = localtime(&rawtime);
-        time_char = asctime(timeinfo);
-        time_char[strlen(time_char) - 1] = 0;
+         
     }
 }
 
@@ -292,17 +364,23 @@ int main(int argc, char *argv[])
     time_t rawtime;
     struct tm *timeinfo;
     char *time_char;
+    char log[200];
     struct sockaddr_in server_addr, client_addr;
     int cli_size = sizeof(client_addr);
+    pthread_t tid[2] = { 0, };
 
     time(&rawtime);
     timeinfo = localtime(&rawtime);
     time_char = asctime(timeinfo);
     time_char[strlen(time_char) - 1] = 0;
 
-    printf("///////////////////////////////////\n");
-    printf("[%s] Server starting....\n", time_char);
-    printf("///////////////////////////////////\n");
+    sprintf(log, "///////////////////////////////////\n"
+            "[%s] Server starting....\n"
+            "///////////////////////////////////\n", time_char);
+
+    pthread_create(&tid[0], NULL, write_log, (void *)log);
+    pthread_create(&tid[1], NULL, print_log, (void *)log);
+
 
     if((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
