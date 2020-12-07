@@ -1,8 +1,11 @@
-// File name: proj.c
-// System Programming Project
-// OS: Ubuntu 20.04
-// Docker iamge: mjnhb2001/cura_engine
-// Author: JunSang Lee
+//////////////////////////////////////////////
+// System Programming Project               //
+// File name: proj.c                        //
+// OS: Ubuntu 20.04                         //
+// Docker iamge: mjnhb2001/cura_engine      //
+// Author: JunSang Lee                      //
+// Descriptiln: slicing web server          //
+//////////////////////////////////////////////
 
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +24,17 @@
 #include <sys/shm.h>
 
 #define PORTNUM 9000
+
 #define HTML_FILE_NAME "proj.html"
 
+
+//////////////////////////////////////////////
+// Function name: make_octo_socket          //
+// Input: octoprint's IP address            //
+// Output: socket value                     //
+// Purpose: make socket to communicate with //
+//          octoprint                       //
+//////////////////////////////////////////////
 int make_octo_socket(char *address)
 {
     int octo_socket = 0;
@@ -46,17 +58,41 @@ int make_octo_socket(char *address)
 
     return octo_socket;
 }
+
+//////////////////////////////////////////////
+// Function name: write_log                 //
+// Input: client's connection information   //
+// Output: none                             //
+// Purpose: store client's information      //
+//////////////////////////////////////////////
+
 void *write_log(void *message)
 {
     FILE *fp = fopen("proj_server_log.txt", "a");
     fprintf(fp, (char *)message);
     fclose(fp);
 }
+
+//////////////////////////////////////////////
+// Function name: print_log                 //
+// Input: client's connection information   //
+// Output: none                             //
+// Purpose: print client's information      //
+//          on stdout                       //
+//////////////////////////////////////////////
 void *print_log(void *message)
 {
     printf("%s", (char *)message);
 }
 
+//////////////////////////////////////////////
+// Function name: slice_cura                //
+// Input: file name for slicing(.stl file)  //
+// Output: none                             //
+// Purpose: Call curaengine to slice file   //
+//          which file name receiveed at    //
+//          argument                        //
+//////////////////////////////////////////////
 void slice_cura(char *file_name)
 {
     char route[500] = "./stl";
@@ -74,6 +110,19 @@ void slice_cura(char *file_name)
     execl("../CuraEngine/build/CuraEngine", " ", "slice", "-j", "./fdmprinter.def.json", "-o", result, "-l", file_name, (char *)0);
 }
 
+//////////////////////////////////////////////
+// Function name: slice_stl                 //
+// Input: req_uri -> file name to slice     //
+//        client_fd -> client socket value  //
+// Output: none                             //
+// Purpose: check req_uri file is able to   //
+//          access. if file is able to      //
+//          access, slice the file and      //
+//          send file to client and         //
+//          octo print server.              //
+//          if server is unable to access,  //
+//          send 404 error message          //
+//////////////////////////////////////////////
 
 void slice_stl(char *req_uri, int client_fd)
 {
@@ -119,6 +168,12 @@ void slice_stl(char *req_uri, int client_fd)
             }
             else
             {
+                char *octo = getenv("octo");
+                if(octo == NULL)
+                {
+                    write_log("Cant' connect to octoprint\n");
+                    print_log("Cant' connect to octoprint\n");
+                }
                 fp = fopen(result_name, "r");
                 stat(result_name, &statbuf);
                 // fp = fopen("./output/test.txt", "r");
@@ -149,32 +204,38 @@ void slice_stl(char *req_uri, int client_fd)
                 temp = realloc(temp, strlen(file_buf) + strlen(file_name) + 400);
                 memset(temp, '\0', sizeof(temp));
 
-                octo_socket = make_octo_socket("////////////");
-                // send file to octoprint server 192.168.0.46
-                sprintf(temp, "POST /api/files/local HTTP/1.1\r\n"
-                "Host: test.com\r\n"
-                "X-Api-Key: C629594E7B0B41D9BF20006886C95E91\r\n"
-                "Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
-                "Content-Length: %d\r\n\r\n"
-                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
-                "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
-                "Content-Type: application/octet-stream\r\n\r\n"
-                "%s"
-                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
-                "Content-Disposition: form-data; name=\"select\"\r\n\r\n"
-                "true\r\n"
-                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
-                "Content-Disposition: form-data; name=\"print\"\r\n\r\n"
-                "true\r\n"
-                "------WebKitFormBoundaryDeC2E3iWbTv1PwMC--\r\n\r\n", (int)strlen(file_buf) + 377 + (int)strlen(result_name), result_name, file_buf);
-                write(octo_socket, temp, strlen(temp));
+                if(octo != NULL)
+                {
+                    octo_socket = make_octo_socket(octo);
+                    // send file to octoprint server
+                    // Octoprint API Key: C629594E7B0B41D9BF20006886C95E91
+                    sprintf(temp, "POST /api/files/local HTTP/1.1\r\n"
+                    "Host: keykim.me\r\n"
+                    "X-Api-Key: C629594E7B0B41D9BF20006886C95E91\r\n"
+                    "Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                    "Content-Length: %d\r\n\r\n"
+                    "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                    "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
+                    "Content-Type: application/octet-stream\r\n\r\n", (int)strlen(file_buf) + 377 + (int)strlen(result_name), result_name);
+                    char *req_end =
+                    "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                    "Content-Disposition: form-data; name=\"select\"\r\n\r\n"
+                    "true\r\n"
+                    "------WebKitFormBoundaryDeC2E3iWbTv1PwMC\r\n"
+                    "Content-Disposition: form-data; name=\"print\"\r\n\r\n"
+                    "true\r\n"
+                    "------WebKitFormBoundaryDeC2E3iWbTv1PwMC--\r\n\r\n";
+                    write(octo_socket, temp, strlen(temp));
+                    write(octo_socket, file_buf, strlen(file_buf));
+                    write(octo_socket, req_end, strlen(req_end));
 
-                read(octo_socket, res_recv, sizeof(res_recv));
-                printf("response: %s\n", res_recv);
+                    read(octo_socket, res_recv, sizeof(res_recv));
+                    printf("response: %s\n", res_recv);
+                    close(octo_socket);
+                }
 
                 unlink(result_name);
                 close(client_fd);
-                close(octo_socket);
                 free(file_buf);
                 free(temp);   
             }
@@ -198,7 +259,21 @@ void slice_stl(char *req_uri, int client_fd)
         close(client_fd);
     }
 }
-void ls_file(int client_fd, int port, char *req_address, char *req_method)
+
+//////////////////////////////////////////////
+// function name: ls_file                   //
+// Input: client_fd -> client socket        //
+//        req_address -> server's address   //
+// Output: none                             //
+// Purpose: read files in stl folder        //
+//          save file's information on      //
+//          proj.html file.                 //
+//          each file name component has    //
+//          link to server can call         //
+//          slice_stl                       //
+//////////////////////////////////////////////
+
+void ls_file(int client_fd, char *req_address)
 {
     char response_header[1024] = { 0, };
     FILE *fp = fopen(HTML_FILE_NAME, "w");
@@ -243,6 +318,16 @@ void ls_file(int client_fd, int port, char *req_address, char *req_method)
 
     fclose(fp);
 }
+
+//////////////////////////////////////////////
+// Function name: inet_main                 //
+// Input: socket_fd -> server socket        //
+// Output: none                             //
+// Purpose: handle client's request         //
+//          send client information to      //
+//          write_log & print_log           //
+//////////////////////////////////////////////
+
 void inet_main(int socket_fd)
 {
     time_t rawtime;
@@ -301,7 +386,7 @@ void inet_main(int socket_fd)
             sprintf(log, "Client IP %s accessed to ls_file\n", inet_ntoa(client_addr.sin_addr));
             pthread_create(&tid[0], NULL, write_log, (void *)log);
             pthread_create(&tid[1], NULL, print_log, (void *)log);
-            ls_file(client_fd, client_addr.sin_port, req_address, req_method);
+            ls_file(client_fd, req_address);
 
             sprintf(response_header, "HTTP/1.0 200 OK\r\n"
                 "Server: web server"
