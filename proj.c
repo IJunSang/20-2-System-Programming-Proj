@@ -357,13 +357,17 @@ void inet_main(int socket_fd)
         }
 
         read(client_fd, req, sizeof(req));
+        if(req == NULL){ close(client_fd); continue; }
         req_temp = strtok(req, " ");
+        if(req_temp == NULL){ close(client_fd); continue; }
         strcpy(req_method, req_temp);
         req_temp = strtok(NULL, " ");
+        if(req_temp == NULL){ close(client_fd); continue; }
         strcpy(req_uri, req_temp);
         req_temp = strtok(NULL, "\n");
         req_temp = strtok(NULL, " ");
         req_temp = strtok(NULL, "\n");
+        if(req_temp == NULL){ close(client_fd); continue; }
         strcpy(req_address, req_temp);
         req_temp = strtok(NULL, "\n");
 
@@ -390,6 +394,7 @@ void inet_main(int socket_fd)
 
             sprintf(response_header, "HTTP/1.0 200 OK\r\n"
                 "Server: web server"
+                "Access-Control-Allow-Origin: *"
                 "Content-length:%d\r\n"
                 "Content-type:text/html\r\n\r\n", (int)strlen(response_header));
             response_fd = open(HTML_FILE_NAME, O_RDONLY);
