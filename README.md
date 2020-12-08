@@ -10,7 +10,9 @@
 * 개발 내용 소개:
     * 개요: 3D 모델을 3D 프린터가 출력할 수 있는 파일로 변환하는 과정을 슬라이싱이라고 한다. 본 프로그램에서는 서버 안에 저장되어있는 3D 모델링파일(.stl)을 웹에서 사용자가 선택하면 선택한 파일을 CuraEngine을 이용하여 슬라이싱하고 나온 결과물(.gcode)을 사용자에게 돌려주고, Octoprint 서버에도 파일을 전송하여 결과물을 출력할 수 있게 해준다.
     * 사용 언어: C
-    * 사용 프로그램: Ultimaker/CuraEngine(https://github.com/Ultimaker/CuraEngine)
+    * 사용 프로그램: 
+      * Ultimaker/CuraEngine(https://github.com/Ultimaker/CuraEngine)
+      * Octoprint(https://octoprint.org/)
 
 * 개발 결과물 소개:
     * 다이어그램: ![Alt text](proj_diagram.png "diagram")
