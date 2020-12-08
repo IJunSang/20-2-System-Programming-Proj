@@ -21,8 +21,8 @@
     * 소스코드 컴파일: gcc -o proj proj.c -pthread
     * 프로그램 실행: ./proj
     * 프로그램 구동 화면 스크린샷
-![Alt text](./result_image/result_1.png "result_1")
-![Alt text](./result_image/result_2.PNG "result_2")
+![Alt text](./result_image/result_1.PNG "result_1")
+![Alt text](./result_image/result_2.png "result_2")
 ![Alt text](./result_image/result_3.PNG "result_3")
 
 * 개발 결과물의 필요성 및 활용방안:
