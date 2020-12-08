@@ -14,19 +14,17 @@
       * Ultimaker/CuraEngine(https://github.com/Ultimaker/CuraEngine)
       * Octoprint(https://octoprint.org/)
 
-* 개발 결과물 소개:
+### 개발 결과물 소개
     * 다이어그램: ![Alt text](./result_image/proj_diagram.png "diagram")
 
-* 개발 결과물 사용하는 방법:
-    * Dockerfile 사용: # docker image build -t "이미지 이름" .
-    * 사전 구성요소: export octo="사용자의 octoprint ip주소"
-    * 소스코드 컴파일: gcc -o proj proj.c -pthread
-    * 프로그램 실행: ./proj
-* 프로그램 구동 화면 스크린샷
+### 개발 결과물 사용하는 방법:
+    1. 웹페이지 접속
+    2. 원하는 모델링 파일 선택
+### 프로그램 구동 화면 스크린샷
 ![Alt text](./result_image/result_1.PNG "result_1")
 ![Alt text](./result_image/result_2.png "result_2")
 ![Alt text](./result_image/result_3.PNG "result_3")
 
-* 개발 결과물의 필요성 및 활용방안:
+### 개발 결과물의 필요성 및 활용방안:
     * 사용자의 컴퓨터에서 직접 슬라이싱을 할 경우에는 컴퓨터의 리소스를 잡아먹기 때문에, 클라우드에 서버를 올려 클라우드에서 작업을 대신 처리하도록 한다.
     * 일반적으로 3D 프린터에 작업물을 전송하기 위해선 sd카드에 작업물을 담아 프린터로 전송하거나 usb를 이용해서 프린터를 전송해야 한다. 하지만, octoprint 프로그램을 라즈베리파이에 탑재해 프린터 보드와 usb로 연결해서 운영하면 결과물을 네트워크로 octoprint 서버로 전송하면, octoprint 서버에서 프린터 보드로 작업물을 전송해서 사용자의 수고를 덜어준다.
