@@ -21,9 +21,9 @@
     * 소스코드 컴파일: gcc -o proj proj.c -pthread
     * 프로그램 실행: ./proj
     * 프로그램 구동 화면 스크린샷
-![Alt text](result_1.png "result_1")
-![Alt text](result_2.png "result_2")
-![Alt text](result_3.png "result_3")
+![Alt text](./result_image/result_1.png "result_1")
+![Alt text](./result_image/result_2.PNG "result_2")
+![Alt text](./result_image/result_3.PNG "result_3")
 
 * 개발 결과물의 필요성 및 활용방안:
     * 사용자의 컴퓨터에서 직접 슬라이싱을 할 경우에는 컴퓨터의 리소스를 잡아먹기 때문에, 클라우드에 서버를 올려 클라우드에서 작업을 대신 처리하도록 한다.
