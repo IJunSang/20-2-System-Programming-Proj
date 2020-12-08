@@ -15,7 +15,8 @@
       * Octoprint(https://octoprint.org/)
 
 ### 개발 결과물 소개
-    * 다이어그램: ![Alt text](./result_image/proj_diagram.png "diagram")
+다이어그램: 
+  ![Alt text](./result_image/proj_diagram.png "diagram")
 
 ### 개발 결과물 사용하는 방법:
     1. 웹페이지 접속
